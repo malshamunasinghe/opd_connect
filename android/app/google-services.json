@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "633481560193",
+    "project_id": "hci-opd-connect",
+    "storage_bucket": "hci-opd-connect.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:633481560193:android:c21a1b26a0479be7cc0d80",
+        "android_client_info": {
+          "package_name": "lk.sliit.we81.opd_connect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYtE1Go0KEixxCOwGsqQcIN2IlWBd_Mno"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

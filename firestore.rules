@@ -1,0 +1,155 @@
+rules_version = '2';
+
+// OPD Connect - Firestore security rules (NF1: data protection, S17 roles).
+// Deploy:  firebase deploy --only firestore:rules
+// or paste into Firebase console > Firestore Database > Rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function userPath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function role() {
+      return signedIn() && exists(userPath()) ? get(userPath()).data.role : 'none';
+    }
+    function isStaff() { return role() in ['staff', 'admin']; }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function accessCodes() { return get(/databases/$(database)/documents/config/access).data; }
+
+    // Holds staffCode / adminCode. Never readable by the app; only these
+    // rules can see it (create it in the Firebase console - see README).
+    match /config/{doc} {
+      allow read, write: if false;
+    }
+
+    // Server-side checks mirror the app's validators, so the data stays clean
+    // even if a request does not come from the app.
+    function validName(v) { return v is string && v.size() >= 3 && v.size() <= 80; }
+    function validPhone(v) { return v is string && v.matches('^0[0-9]{9}$'); }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (uid() == userId || isStaff());
+      allow create: if signedIn() && uid() == userId
+        && validName(request.resource.data.name)
+        && validPhone(request.resource.data.phone) && (
+        request.resource.data.role == 'patient' ||
+        (request.resource.data.role == 'staff' && request.resource.data.accessCode == accessCodes().staffCode) ||
+        (request.resource.data.role == 'admin' && request.resource.data.accessCode == accessCodes().adminCode)
+      );
+      // Users may change their own settings but never their role.
+      allow update: if signedIn() && uid() == userId
+        && !changed().hasAny(['role', 'accessCode', 'email']);
+      allow delete: if false;
+    }
+
+    match /hospitals/{id} {
+      allow read: if signedIn();
+      allow create, update: if isStaff()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 5 && request.resource.data.name.size() <= 80
+        && request.resource.data.district is string && request.resource.data.district.size() > 0;
+      allow delete: if isStaff();
+    }
+
+    // A patient may only take or release exactly one place in a session:
+    // the counter and the queue list may change by one, nothing else.
+    function patientTakesPlace() {
+      let oldQ = resource.data.waitingIds;
+      let newQ = request.resource.data.waitingIds;
+      return resource.data.status == 'active'
+        && newQ.size() == oldQ.size() + 1 && newQ.hasAll(oldQ)
+        && request.resource.data.bookedCount == resource.data.bookedCount + 1
+        && request.resource.data.bookedCount <= resource.data.capacity
+        && request.resource.data.lastToken == resource.data.lastToken + 1;
+    }
+    function patientReleasesPlace() {
+      let oldQ = resource.data.waitingIds;
+      let newQ = request.resource.data.waitingIds;
+      return oldQ.hasAll(newQ) && newQ.size() >= oldQ.size() - 1
+        && request.resource.data.bookedCount >= resource.data.bookedCount - 1
+        && request.resource.data.bookedCount <= resource.data.bookedCount
+        && request.resource.data.lastToken == resource.data.lastToken;
+    }
+
+    match /sessions/{id} {
+      allow read: if signedIn();
+      allow create: if isStaff()
+        && request.resource.data.capacity is int
+        && request.resource.data.capacity >= 1 && request.resource.data.capacity <= 300;
+      allow delete: if isStaff();
+      // Staff may exceed capacity on purpose (walk-ins are never turned away).
+      allow update: if isStaff() || (signedIn()
+        && changed().hasOnly(['bookedCount', 'lastToken', 'waitingIds'])
+        && (patientTakesPlace() || patientReleasesPlace()));
+    }
+
+    match /appointments/{id} {
+      allow read: if isStaff() || (signedIn() && resource.data.patientUid == uid());
+      allow create: if isStaff() || (signedIn()
+        && request.resource.data.patientUid == uid()
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.channel == 'app'
+        && request.resource.data.priority == false);
+      // Patients can reschedule, cancel, toggle reminders and say "I'm here",
+      // but cannot flag themselves as priority or mark themselves served.
+      allow update: if isStaff() || (signedIn()
+        && resource.data.patientUid == uid()
+        && request.resource.data.patientUid == uid()
+        && request.resource.data.status in ['waiting', 'cancelled']
+        && !changed().hasAny(['priority', 'priorityReason', 'channel', 'patientId']));
+      allow delete: if isStaff() || (signedIn()
+        && resource.data.patientUid == uid()
+        && resource.data.status in ['cancelled', 'completed', 'noShow']);
+    }
+
+    match /patients/{pid} {
+      allow read: if isStaff() || (signedIn() && resource.data.linkedUid == uid());
+      allow create: if isStaff() || (signedIn()
+        && request.resource.data.linkedUid == uid()
+        && request.resource.data.archived == false);
+      // A patient may update their own health profile, but never the NIC,
+      // the link to their account or the archive flag.
+      allow update: if isStaff() || (signedIn()
+        && resource.data.linkedUid == uid()
+        && request.resource.data.linkedUid == uid()
+        && request.resource.data.archived == resource.data.archived
+        && !changed().hasAny(['nic', 'linkedUid', 'archived', 'archiveNote', 'createdBy'])
+        && validName(request.resource.data.fullName)
+        && validPhone(request.resource.data.phone));
+      // Records are archived, never deleted (S16).
+      allow delete: if false;
+
+      match /visits/{vid} {
+        allow read: if isStaff() || (signedIn()
+          && get(/databases/$(database)/documents/patients/$(pid)).data.linkedUid == uid());
+        allow write: if isStaff();
+      }
+    }
+
+    match /notifications/{nid} {
+      allow read, delete: if signedIn() && resource.data.uid == uid();
+      allow update: if signedIn() && resource.data.uid == uid() && changed().hasOnly(['read']);
+      allow create: if isStaff() || (signedIn() && request.resource.data.uid == uid());
+    }
+
+    // A patient rates a visit once (document id = appointment id).
+    match /feedback/{fid} {
+      allow read: if isStaff() || (signedIn() && resource.data.patientUid == uid());
+      allow create: if signedIn()
+        && request.resource.data.patientUid == uid()
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && request.resource.data.comment.size() <= 300
+        && get(/databases/$(database)/documents/appointments/$(fid)).data.patientUid == uid()
+        && get(/databases/$(database)/documents/appointments/$(fid)).data.status == 'completed';
+      allow update, delete: if false;
+    }
+
+    // Append-only audit trail.
+    match /auditLogs/{id} {
+      allow read: if isStaff();
+      allow create: if isStaff() && request.resource.data.byUid == uid();
+      allow update, delete: if false;
+    }
+  }
+}

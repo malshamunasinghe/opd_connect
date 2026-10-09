@@ -1,0 +1,13 @@
+{
+  "name": "opd-connect-backend-tests",
+  "private": true,
+  "type": "module",
+  "description": "Tests for the Firestore security rules and data model, run against the local Firebase emulator (no production data is touched).",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.0"
+  }
+}
