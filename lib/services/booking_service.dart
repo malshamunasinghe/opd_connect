@@ -225,22 +225,30 @@ class BookingService {
       Db.appointments.doc(appointmentId).update({'reminderEnabled': on, if (on) 'reminderSent': false});
 
   // ---------------------------------------------------------------- S04
-  /// READ - all of this patient's appointments, newest first.
+  /// READ - all of this patient's appointments, newest first. Entries the
+  /// patient removed from their history are filtered here, in Dart, so no
+  /// composite index is needed; staff queries still see them.
   static Stream<List<Appointment>> myAppointments(String uid) => Db.appointments
       .where('patientUid', isEqualTo: uid)
       .snapshots()
-      .map((q) => q.docs.map(Appointment.fromDoc).toList()
+      .map((q) => q.docs.where((d) => d.data()['hiddenForPatient'] != true).map(Appointment.fromDoc).toList()
         ..sort((a, b) {
           final c = a.date.compareTo(b.date);
           return c != 0 ? c : a.startTime.compareTo(b.startTime);
         }));
 
-  /// DELETE - remove a finished/cancelled appointment from the history list.
+  /// DELETE (soft) - remove a finished/cancelled appointment from the
+  /// patient's history list. The document is kept and only flagged hidden:
+  /// the clinic needs to retain an attendance record, and NF1 data protection
+  /// applies to the clinical record as well as to the patient.
   static Future<void> deleteFromHistory(Appointment a) {
     if (a.isActive) {
       throw const AppException('active', 'Cancel the appointment before removing it.');
     }
-    return Db.appointments.doc(a.id).delete();
+    return Db.appointments.doc(a.id).update({
+      'hiddenForPatient': true,
+      'hiddenAt': FieldValue.serverTimestamp(),
+    });
   }
 
   // ---------------------------------------------------------------- S05
