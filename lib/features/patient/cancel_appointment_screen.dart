@@ -88,7 +88,7 @@ class _CancelAppointmentScreenState extends State<CancelAppointmentScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.danger.withValues(alpha: 0.08),
+              color: AppColors.danger.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(AppSizes.radius),
             ),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
