@@ -9,6 +9,7 @@ import 'features/patient/patient_home.dart';
 import 'features/reception/staff_home.dart';
 import 'models/user_profile.dart';
 import 'services/auth_service.dart';
+import 'widgets/hospital_background.dart';
 
 /// The signed-in user, provided above MaterialApp so every pushed route can
 /// read it with `context.read<CurrentUser>()`.
@@ -108,7 +109,7 @@ class _AppShellState extends State<_AppShell> {
           final scale = (system * settings.textScale).clamp(1.0, 2.2);
           return MediaQuery(
             data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)),
-            child: child!,
+            child: HospitalBackground(child: child!),
           );
         },
         home: _RootGate(waiting: widget.waiting),

@@ -42,7 +42,7 @@ class AppTheme {
         error: AppColors.danger,
         surface: surface,
       ),
-      scaffoldBackgroundColor: surface,
+      scaffoldBackgroundColor: Colors.transparent,
     );
 
     // Noto Sans renders Latin; Sinhala/Tamil glyphs fall back to the Noto
