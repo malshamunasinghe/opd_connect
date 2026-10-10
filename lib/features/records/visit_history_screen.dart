@@ -130,7 +130,7 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
                         child: EmptyView(icon: Icons.search_off, message: s.t('noMatchingVisits')),
                       )
                     else
-                      for (final v in shown) VisitCard(visit: v),
+                      for (final v in shown) VisitCard(patientId: _patientId!, visit: v),
                   ],
                 );
               },
@@ -141,8 +141,27 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
 
 /// One expandable visit: clinic and date on top, details when opened.
 class VisitCard extends StatelessWidget {
+  final String patientId;
   final Visit visit;
-  const VisitCard({super.key, required this.visit});
+  const VisitCard({super.key, required this.patientId, required this.visit});
+
+  Future<void> _deleteVisit(BuildContext context) async {
+    final place = visit.hospitalName.isNotEmpty ? visit.hospitalName : visit.department;
+    final ok = await confirm(
+      context,
+      title: 'Delete visit history?',
+      message: 'Delete the visit at $place on ${formatDay(visit.date)}? This action cannot be undone.',
+      confirmLabel: 'Delete visit',
+      danger: true,
+    );
+    if (!ok || !context.mounted) return;
+
+    await runGuarded(
+      context,
+      () => PatientService.deleteVisit(patientId, visit.id),
+      success: 'Visit history deleted',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -169,6 +188,15 @@ class VisitCard extends StatelessWidget {
           InfoRow(s.t('diagnosis'), v.diagnosis.isEmpty ? s.t('notRecorded') : v.diagnosis,
               icon: Icons.assignment_outlined),
           if (v.notes.isNotEmpty) InfoRow(s.t('notes'), v.notes, icon: Icons.notes),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => _deleteVisit(context),
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Delete visit history'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            ),
+          ),
         ],
       ),
     );

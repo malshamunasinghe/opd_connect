@@ -197,11 +197,14 @@ describe('staff operations (S08-S12, S18-S21)', () => {
     await assertSucceeds(getDoc(doc(as('pat1'), 'hospitals/h1')));
   });
 
-  it('staff can add a visit to a record; patients can read their own history only', async () => {
+  it('patients can delete visits only from their own visit history', async () => {
     await assertSucceeds(setDoc(doc(as('staff1'), 'patients/p1/visits/v1'), { department: 'General OPD', diagnosis: 'Fever' }));
+    await assertSucceeds(setDoc(doc(as('staff1'), 'patients/p1/visits/v2'), { department: 'General OPD', diagnosis: 'Cold' }));
     await assertSucceeds(getDoc(doc(as('pat1'), 'patients/p1/visits/v1')));
     await assertFails(getDoc(doc(as('pat2'), 'patients/p1/visits/v1')));
     await assertFails(setDoc(doc(as('pat1'), 'patients/p1/visits/v2'), { diagnosis: 'self-diagnosed' }));
+    await assertFails(deleteDoc(doc(as('pat2'), 'patients/p1/visits/v2')));
+    await assertSucceeds(deleteDoc(doc(as('pat1'), 'patients/p1/visits/v1')));
   });
 });
 

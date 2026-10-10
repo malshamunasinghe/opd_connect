@@ -126,7 +126,7 @@ class _BodyState extends State<_Body> {
               const SizedBox(height: 8),
               // Latest three here; the full list, search and filter live on
               // the Visit history screen.
-              for (final v in visits.take(3)) VisitCard(visit: v),
+              for (final v in visits.take(3)) VisitCard(patientId: r.id, visit: v),
               const SizedBox(height: 4),
               SecondaryButton(
                 s.t('viewAllVisits'),
