@@ -39,6 +39,7 @@ beforeEach(async () => {
     const db = ctx.firestore();
     await setDoc(doc(db, 'config/access'), { staffCode: 'STAFF-1', adminCode: 'ADMIN-1' });
     await setDoc(doc(db, 'users/staff1'), { role: 'staff', name: 'Sithmini K', phone: '0771111111' });
+    await setDoc(doc(db, 'users/admin1'), { role: 'admin', name: 'Admin User', phone: '0771111112' });
     await setDoc(doc(db, 'users/pat1'), { role: 'patient', name: 'Nimal Perera', phone: '0771234567' });
     await setDoc(doc(db, 'users/pat2'), { role: 'patient', name: 'Kamala Silva', phone: '0772222222' });
     await setDoc(doc(db, 'hospitals/h1'), { name: 'District General Hospital', district: 'Gampaha' });
@@ -48,6 +49,10 @@ beforeEach(async () => {
     await setDoc(doc(db, 'patients/p1'), {
       fullName: 'Nimal Perera', nic: '851234567V', phone: '0771234567', address: 'Negombo',
       linkedUid: 'pat1', archived: false, createdBy: 'pat1',
+    });
+    await setDoc(doc(db, 'patients/admin-record'), {
+      fullName: 'Admin User', nic: '851234568V', phone: '0771111112',
+      linkedUid: 'admin1', archived: false, createdBy: 'admin1',
     });
     await setDoc(doc(db, 'notifications/n1'), { uid: 'pat1', title: 'Booked', body: 'x', type: 'booking', read: false });
     await setDoc(doc(db, 'notifications/n2'), { uid: 'pat2', title: 'Booked', body: 'x', type: 'booking', read: false });
@@ -151,7 +156,19 @@ describe('privacy (NF1)', () => {
     await assertFails(updateDoc(doc(as('pat1'), 'patients/p1'), { nic: '999999999V' }));
     await assertFails(updateDoc(doc(as('pat1'), 'patients/p1'), { linkedUid: 'pat2' }));
     await assertFails(updateDoc(doc(as('pat1'), 'patients/p1'), { fullName: 'X' }));
-    await assertFails(deleteDoc(doc(as('staff1'), 'patients/p1'))); // records are archived, never deleted
+    await assertFails(deleteDoc(doc(as('staff1'), 'patients/p1')));
+    await assertFails(deleteDoc(doc(as('pat1'), 'patients/p1')));
+  });
+
+  it('admins can delete another patient and their visits, but not their own record or account', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'patients/p1/visits/v1'), { department: 'General OPD' });
+    });
+
+    await assertSucceeds(deleteDoc(doc(as('admin1'), 'patients/p1/visits/v1')));
+    await assertSucceeds(deleteDoc(doc(as('admin1'), 'patients/p1')));
+    await assertFails(deleteDoc(doc(as('admin1'), 'patients/admin-record')));
+    await assertFails(deleteDoc(doc(as('admin1'), 'users/admin1')));
   });
 
   it('notifications: read own only, cannot send to someone else', async () => {

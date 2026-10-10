@@ -82,18 +82,14 @@ class PatientService {
   /// DELETE - permanently remove a patient record. Admin-only action.
   static Future<void> deletePatient(String patientId) async {
     final batch = Db.fs.batch();
+    final patientRef = Db.patients.doc(patientId);
 
-    final visits = await Db.visits(patientId).get();
+    final visits = await patientRef.collection('visits').get();
     for (final doc in visits.docs) {
       batch.delete(doc.reference);
     }
 
-    final audit = await Db.auditLogs.where('patientId', isEqualTo: patientId).get();
-    for (final doc in audit.docs) {
-      batch.delete(doc.reference);
-    }
-
-    batch.delete(Db.patients.doc(patientId));
+    batch.delete(patientRef);
     await batch.commit();
   }
 

@@ -13,6 +13,7 @@ service cloud.firestore {
       return signedIn() && exists(userPath()) ? get(userPath()).data.role : 'none';
     }
     function isStaff() { return role() in ['staff', 'admin']; }
+    function isAdmin() { return role() == 'admin'; }
     function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
     function accessCodes() { return get(/databases/$(database)/documents/config/access).data; }
 
@@ -122,8 +123,9 @@ service cloud.firestore {
         && !changed().hasAny(['nic', 'linkedUid', 'archived', 'archiveNote', 'createdBy'])
         && validName(request.resource.data.fullName)
         && validPhone(request.resource.data.phone));
-      // Records are archived, never deleted (S16).
-      allow delete: if false;
+      // Only admins may hard-delete records, and never their own linked record.
+      allow delete: if isAdmin()
+        && (!('linkedUid' in resource.data) || resource.data.linkedUid != uid());
 
       match /visits/{vid} {
         allow read: if isStaff() || (signedIn()
