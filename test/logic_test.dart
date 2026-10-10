@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:opd_connect/core/logic.dart';
 import 'package:opd_connect/core/strings.dart';
 import 'package:opd_connect/core/ui.dart';
+import 'package:opd_connect/models/user_profile.dart';
 
 /// Automated functional tests for the business rules behind the queue,
 /// booking and record screens. IDs match docs/TEST_CASES.md (AT-xx).
@@ -214,6 +215,48 @@ void main() {
       expect(InitialsAvatar.initialsOf('Nimal'), 'N');
       expect(InitialsAvatar.initialsOf('  '), '?');
       expect(InitialsAvatar.initialsOf('Kamala D. Wickramasinghe'), 'KW');
+    });
+
+    test('AT-23a admin-only access flag is enforced by role', () {
+      const admin = UserProfile(
+        uid: 'u1',
+        name: 'Admin User',
+        email: 'admin@example.com',
+        phone: '0770000000',
+        role: Roles.admin,
+      );
+      const staff = UserProfile(
+        uid: 'u2',
+        name: 'Staff User',
+        email: 'staff@example.com',
+        phone: '0770000001',
+        role: Roles.staff,
+      );
+      expect(admin.isAdmin, isTrue);
+      expect(staff.isAdmin, isFalse);
+      expect(admin.isStaff, isTrue);
+      expect(staff.isStaff, isTrue);
+    });
+
+    test('AT-23a admin-only access flag is enforced by role', () {
+      const admin = UserProfile(
+        uid: 'u1',
+        name: 'Admin User',
+        email: 'admin@example.com',
+        phone: '0770000000',
+        role: Roles.admin,
+      );
+      const staff = UserProfile(
+        uid: 'u2',
+        name: 'Staff User',
+        email: 'staff@example.com',
+        phone: '0770000001',
+        role: Roles.staff,
+      );
+      expect(admin.isAdmin, isTrue);
+      expect(staff.isAdmin, isFalse);
+      expect(admin.isStaff, isTrue);
+      expect(staff.isStaff, isTrue);
     });
 
     test('AT-23b hospital history keeps unique names in order', () {

@@ -79,6 +79,24 @@ class PatientService {
   /// DELETE - remove a visit entered by mistake.
   static Future<void> deleteVisit(String patientId, String visitId) => Db.visits(patientId).doc(visitId).delete();
 
+  /// DELETE - permanently remove a patient record. Admin-only action.
+  static Future<void> deletePatient(String patientId) async {
+    final batch = Db.fs.batch();
+
+    final visits = await Db.visits(patientId).get();
+    for (final doc in visits.docs) {
+      batch.delete(doc.reference);
+    }
+
+    final audit = await Db.auditLogs.where('patientId', isEqualTo: patientId).get();
+    for (final doc in audit.docs) {
+      batch.delete(doc.reference);
+    }
+
+    batch.delete(Db.patients.doc(patientId));
+    await batch.commit();
+  }
+
   // ---------------------------------------------------------------- S15
   /// UPDATE - edit patient details. Every edit is written to the audit log
   /// with the list of changed fields (NF1 accountability).
