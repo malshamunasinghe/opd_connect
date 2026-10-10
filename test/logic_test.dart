@@ -216,6 +216,13 @@ void main() {
       expect(InitialsAvatar.initialsOf('Kamala D. Wickramasinghe'), 'KW');
     });
 
+    test('AT-23b hospital history keeps unique names in order', () {
+      expect(HistoryLogic.hospitalNamesInOrder(['General Hospital', 'Kandy Teaching', 'General Hospital', '']), [
+        'General Hospital',
+        'Kandy Teaching',
+      ]);
+    });
+
     test('AT-24 password strength score rises with variety', () {
       expect(PasswordStrength.score('abc'), 0);
       expect(PasswordStrength.score('abcd1234'), 2);

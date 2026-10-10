@@ -109,6 +109,20 @@ class QueueLogic {
 
 enum QueueState { waiting, nearTurn, yourTurn, notInQueue }
 
+class HistoryLogic {
+  static List<String> hospitalNamesInOrder(Iterable<String> values) {
+    final seen = <String>{};
+    final ordered = <String>[];
+    for (final value in values) {
+      final name = value.trim();
+      if (name.isEmpty || seen.contains(name)) continue;
+      seen.add(name);
+      ordered.add(name);
+    }
+    return ordered;
+  }
+}
+
 /// Input validation shared by registration, check-in and record screens.
 class Validators {
   /// Sri Lankan NIC: old format 9 digits + V/X, new format 12 digits.

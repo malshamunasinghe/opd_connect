@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/appointment.dart';
 import '../models/patient.dart';
 import '../models/user_profile.dart';
 import 'db.dart';
@@ -60,6 +61,12 @@ class PatientService {
   static Stream<List<Visit>> visits(String patientId) => Db.visits(patientId)
       .snapshots()
       .map((q) => q.docs.map(Visit.fromDoc).toList()..sort((a, b) => b.date.compareTo(a.date)));
+
+  /// READ - booked appointments for the patient, newest first.
+  static Stream<List<Appointment>> bookedAppointments(String patientId) => Db.appointments
+      .where('patientId', isEqualTo: patientId)
+      .snapshots()
+      .map((q) => q.docs.map(Appointment.fromDoc).toList()..sort((a, b) => b.date.compareTo(a.date)));
 
   /// CREATE - add a visit manually (e.g. a visit recorded on paper).
   static Future<void> addVisit(String patientId, Map<String, dynamic> data) =>
