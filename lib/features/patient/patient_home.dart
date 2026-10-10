@@ -23,6 +23,7 @@ import '../../services/schedule_service.dart';
 import '../profile/help_screen.dart';
 import '../profile/profile_screen.dart';
 import '../records/my_health_screen.dart';
+import '../records/visit_history_screen.dart';
 import '../schedule/notification_centre_screen.dart';
 import '../schedule/settings_screen.dart';
 import 'book_hospital_screen.dart';
@@ -320,10 +321,10 @@ class _HomeTabState extends State<_HomeTab> {
                       color: AppColors.n600,
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpScreen()))),
                   QuickAction(
-                      icon: Icons.settings_outlined,
-                      label: s.t('settings'),
-                      color: AppColors.n600,
-                      onTap: () => widget.onSwitchTab(4)),
+                      icon: Icons.history,
+                      label: s.t('visitHistory'),
+                      color: AppColors.primaryDark,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitHistoryScreen()))),
                   QuickAction(
                       icon: Icons.local_phone,
                       label: s.t('emergency1990'),

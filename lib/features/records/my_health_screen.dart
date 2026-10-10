@@ -10,6 +10,7 @@ import '../../models/patient.dart';
 import '../../services/patient_service.dart';
 import '../../services/profile_service.dart';
 import '../profile/edit_profile_screen.dart';
+import 'visit_history_screen.dart';
 
 /// "My health" tab: the patient's own health summary and visit history
 /// (read from their centralised record, F3). Read-only except for the
@@ -49,7 +50,6 @@ class _Body extends StatefulWidget {
 
 class _BodyState extends State<_Body> {
   late final Stream<List<Visit>> _visits = PatientService.visits(widget.record.id);
-  String? _department;
 
   @override
   Widget build(BuildContext context) {
@@ -110,8 +110,6 @@ class _BodyState extends State<_Body> {
                 ),
               );
             }
-            final departments = visits.map((v) => v.department).where((d) => d.isNotEmpty).toSet().toList()..sort();
-            final shown = visits.where((v) => _department == null || v.department == _department).toList();
             return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Expanded(child: StatTile(value: '${visits.length}', label: s.t('totalVisits'), icon: Icons.local_hospital_outlined)),
@@ -125,33 +123,17 @@ class _BodyState extends State<_Body> {
                   ),
                 ),
               ]),
-              if (departments.length > 1) ...[
-                const SizedBox(height: 8),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(s.t('all')),
-                        selected: _department == null,
-                        onSelected: (_) => setState(() => _department = null),
-                      ),
-                    ),
-                    for (final d in departments)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(d),
-                          selected: _department == d,
-                          onSelected: (_) => setState(() => _department = _department == d ? null : d),
-                        ),
-                      ),
-                  ]),
-                ),
-              ],
               const SizedBox(height: 8),
-              for (final v in shown) _VisitCard(visit: v),
+              // Latest three here; the full list, search and filter live on
+              // the Visit history screen.
+              for (final v in visits.take(3)) VisitCard(visit: v),
+              const SizedBox(height: 4),
+              SecondaryButton(
+                s.t('viewAllVisits'),
+                icon: Icons.history,
+                onPressed: () =>
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitHistoryScreen())),
+              ),
             ]);
           },
         ),
@@ -174,36 +156,4 @@ class _Fact extends StatelessWidget {
         Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
         Text(label, style: Theme.of(context).textTheme.bodySmall),
       ]);
-}
-
-class _VisitCard extends StatelessWidget {
-  final Visit visit;
-  const _VisitCard({required this.visit});
-
-  @override
-  Widget build(BuildContext context) {
-    final v = visit;
-    final s = context.watch<AppSettings>();
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ExpansionTile(
-        shape: const Border(),
-        collapsedShape: const Border(),
-        leading: const CircleAvatar(
-          backgroundColor: AppColors.n50,
-          child: Icon(Icons.medical_services_outlined, color: AppColors.primary),
-        ),
-        title: Text(v.department.isEmpty ? s.t('clinic') : v.department, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text('${formatDay(v.date)}${v.hospitalName.isEmpty ? '' : '\n${v.hospitalName}'}'),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        expandedCrossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (v.doctorName.isNotEmpty) InfoRow(s.t('doctor'), v.doctorName, icon: Icons.person_outline),
-          if (v.tokenLabel.isNotEmpty) InfoRow('Token', v.tokenLabel, icon: Icons.confirmation_number_outlined),
-          InfoRow(s.t('diagnosis'), v.diagnosis.isEmpty ? s.t('notRecorded') : v.diagnosis, icon: Icons.assignment_outlined),
-          if (v.notes.isNotEmpty) InfoRow(s.t('notes'), v.notes, icon: Icons.notes),
-        ],
-      ),
-    );
-  }
 }
