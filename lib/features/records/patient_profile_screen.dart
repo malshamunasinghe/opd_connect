@@ -1,6 +1,10 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../app.dart';
 import '../../core/logic.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
@@ -57,6 +61,21 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = context.watch<CurrentUser>().profile?.isAdmin ?? false;
+    if (!isAdmin) {
+      return const Scaffold(
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Admin access required to view patient records.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      );
+    }
     return StreamView<Patient?>(
       stream: _patientStream,
       builder: (context, p) {
@@ -81,6 +100,27 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 icon: Icon(p.archived ? Icons.unarchive : Icons.archive_outlined),
                 onPressed: () =>
                     Navigator.push(context, MaterialPageRoute(builder: (_) => ArchivePatientScreen(patient: p))),
+              ),
+              IconButton(
+                tooltip: 'Delete patient',
+                icon: const Icon(Icons.delete_forever_outlined),
+                onPressed: () async {
+                  if (!mounted) return;
+                  final ok = await confirm(
+                    context,
+                    title: 'Delete patient?',
+                    message: 'This will permanently remove ${p.fullName} from the patient records. This action cannot be undone.',
+                    confirmLabel: 'Delete patient',
+                    danger: true,
+                  );
+                  if (!ok || !mounted) return;
+                  final deleted = await runGuarded(
+                    context,
+                    () => PatientService.deletePatient(p.id),
+                    success: 'Patient deleted',
+                  );
+                  if (deleted && mounted) Navigator.pop(context);
+                },
               ),
             ],
           ),

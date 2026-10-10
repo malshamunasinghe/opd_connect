@@ -1,5 +1,9 @@
-import 'package:flutter/material.dart';
+// ignore_for_file: use_build_context_synchronously
 
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../app.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../models/patient.dart';
@@ -30,6 +34,21 @@ class _PatientListScreenState extends State<PatientListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = context.watch<CurrentUser>().profile?.isAdmin ?? false;
+    if (!isAdmin) {
+      return const Scaffold(
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Admin access required to view patient records.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Patient records')),
       floatingActionButton: FloatingActionButton.extended(
@@ -102,7 +121,30 @@ class _PatientListScreenState extends State<PatientListScreen> {
                       ),
                       title: Text(p.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: Text('${p.nic} · ${p.phone}${p.age != null ? ' · ${p.age} yrs' : ''}'),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: PopupMenuButton<String>(
+                        tooltip: 'Patient actions',
+                        onSelected: (value) async {
+                          if (value == 'delete') {
+                            if (!mounted) return;
+                            final ok = await confirm(
+                              context,
+                              title: 'Delete patient?',
+                              message: 'This will permanently remove ${p.fullName} from the patient records. This action cannot be undone.',
+                              confirmLabel: 'Delete patient',
+                              danger: true,
+                            );
+                            if (!ok || !mounted) return;
+                            await runGuarded(
+                              context,
+                              () => PatientService.deletePatient(p.id),
+                              success: 'Patient deleted',
+                            );
+                          }
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'delete', child: Text('Delete patient')),
+                        ],
+                      ),
                       onTap: () => Navigator.push(
                           context, MaterialPageRoute(builder: (_) => PatientProfileScreen(patientId: p.id))),
                     ),
