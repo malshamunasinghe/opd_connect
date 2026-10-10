@@ -79,12 +79,17 @@ class SessionPicker extends StatefulWidget {
   final String? excludeSessionId;
   final ValueChanged<ClinicSession> onPick;
 
+  /// Reschedule only: the clinic being moved. If it has no other open day,
+  /// a banner explains why it is missing from the clinic chips.
+  final String? currentDepartment;
+
   const SessionPicker({
     super.key,
     required this.hospitalId,
     required this.onPick,
     this.initialDepartment,
     this.excludeSessionId,
+    this.currentDepartment,
   });
 
   @override
@@ -125,7 +130,18 @@ class _SessionPickerState extends State<SessionPicker> {
         if (_onlyAvailable) shown = shown.where((x) => !x.isFull).toList();
         final allFull = ofDept.where((x) => x.dateKey == dayKey).every((x) => x.isFull);
 
+        final current = widget.currentDepartment;
+        final currentMissing = current != null && !departments.contains(current);
+
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (currentMissing) ...[
+            InfoBanner(
+              icon: Icons.info_outline,
+              color: AppColors.accent,
+              message: s.tf('noOtherDays', {'clinic': current}),
+            ),
+            const SizedBox(height: 12),
+          ],
           Text(s.t('chooseClinic'), style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 15)),
           const SizedBox(height: 8),
           SingleChildScrollView(

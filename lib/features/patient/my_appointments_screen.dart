@@ -322,7 +322,7 @@ class _PastList extends StatelessWidget {
                 onPressed: () async {
                   final ok = await confirm(context,
                       title: s.t('removeFromList'),
-                      message: '${a.tokenLabel} · ${a.department} · ${formatDay(a.date)}',
+                      message: '${a.tokenLabel} · ${a.department} · ${formatDay(a.date)}\n\n${s.t('removePermanent')}',
                       confirmLabel: s.t('removeFromList'),
                       cancelLabel: s.t('back'),
                       danger: true);

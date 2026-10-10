@@ -237,24 +237,22 @@ class BookingService {
           return c != 0 ? c : a.startTime.compareTo(b.startTime);
         }));
 
-  /// DELETE (soft) - remove a finished/cancelled appointment from the
-  /// patient's history list. The document is kept and only flagged hidden:
-  /// the clinic needs to retain an attendance record, and NF1 data protection
-  /// applies to the clinical record as well as to the patient.
+  /// DELETE - permanently removes a finished, cancelled or missed
+  /// appointment from the database. Active appointments must be cancelled
+  /// first. The patient's medical visit history (patients/{id}/visits) is a
+  /// separate record and is not touched; the security rules only allow the
+  /// owner to delete bookings in those three end states.
   static Future<void> deleteFromHistory(Appointment a) {
     if (a.isActive) {
       throw const AppException('active', 'Cancel the appointment before removing it.');
     }
-    return Db.appointments.doc(a.id).update({
-      'hiddenForPatient': true,
-      'hiddenAt': FieldValue.serverTimestamp(),
-    });
+    return Db.appointments.doc(a.id).delete();
   }
 
   // ---------------------------------------------------------------- S05
   /// UPDATE - move an appointment to another session. The old place is
   /// released and a new token issued, all in one transaction.
-  static Future<void> reschedule(Appointment a, ClinicSession target) async {
+  static Future<String> reschedule(Appointment a, ClinicSession target) async {
     if (a.sessionId == target.id) {
       throw const AppException('same', 'That is already your current booking.');
     }
@@ -268,6 +266,7 @@ class BookingService {
     final oldRef = Db.sessions.doc(a.sessionId);
     final newRef = Db.sessions.doc(target.id);
     final apptRef = Db.appointments.doc(a.id);
+    late String newLabel;
 
     await Db.fs.runTransaction((tx) async {
       final oldSnap = await tx.get(oldRef);
@@ -279,6 +278,7 @@ class BookingService {
         throw const AppException('full', 'All places for that clinic day are taken.');
       }
       final token = s.lastToken + 1;
+      newLabel = QueueLogic.tokenLabel(s.tokenPrefix, token);
       if (oldSnap.exists) {
         final old = ClinicSession.fromDoc(oldSnap);
         tx.update(oldRef, {
@@ -301,7 +301,7 @@ class BookingService {
         'dateKey': s.dateKey,
         'startTime': s.startTime,
         'tokenNumber': token,
-        'tokenLabel': QueueLogic.tokenLabel(s.tokenPrefix, token),
+        'tokenLabel': newLabel,
         'reminderHoursBefore': s.reminderHoursBefore,
         'reminderSent': false,
         'arrived': false,
@@ -309,6 +309,7 @@ class BookingService {
         'rescheduledAt': FieldValue.serverTimestamp(),
       });
     });
+    return newLabel;
   }
 
   // ---------------------------------------------------------------- S06

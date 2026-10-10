@@ -72,10 +72,32 @@ class S {
     'past': {'en': 'Past', 'si': 'පසුගිය', 'ta': 'கடந்தவை'},
     'reschedule': {'en': 'Reschedule', 'si': 'දිනය වෙනස් කරන්න', 'ta': 'மாற்றியமைக்கவும்'},
     'cancel': {'en': 'Cancel appointment', 'si': 'වේලාව අවලංගු කරන්න', 'ta': 'சந்திப்பை ரத்து செய்யவும்'},
+    'removePermanent': {
+      'en': 'This booking will be permanently deleted. This cannot be undone.',
+      'si': 'මෙම වෙන්කිරීම සදහටම මකා දමනු ඇත. මෙය ආපසු හැරවිය නොහැක.',
+      'ta': 'இந்த பதிவு நிரந்தரமாக நீக்கப்படும். இதை மாற்ற முடியாது.'
+    },
     'removeFromList': {'en': 'Remove from list', 'si': 'ලැයිස්තුවෙන් ඉවත් කරන්න', 'ta': 'பட்டியலிலிருந்து நீக்கவும்'},
     'currentBooking': {'en': 'Current booking', 'si': 'වත්මන් වෙන්කිරීම', 'ta': 'தற்போதைய பதிவு'},
     'newDay': {'en': 'Choose the new day', 'si': 'නව දිනය තෝරන්න', 'ta': 'புதிய நாளைத் தேர்ந்தெடுக்கவும்'},
     'confirmChange': {'en': 'Confirm change', 'si': 'වෙනස තහවුරු කරන්න', 'ta': 'மாற்றத்தை உறுதிப்படுத்தவும்'},
+    'moveFrom': {'en': 'From', 'si': 'සිට', 'ta': 'இருந்து'},
+    'moveTo': {'en': 'To', 'si': 'වෙත', 'ta': 'க்கு'},
+    'tokenWillChange': {
+      'en': 'Your token number will change when you move to a new day. Your old place is released for another patient.',
+      'si': 'නව දිනයකට මාරු වූ විට ඔබගේ අංකය වෙනස් වේ. ඔබගේ පැරණි ස්ථානය වෙනත් රෝගියෙකුට නිදහස් වේ.',
+      'ta': 'புதிய நாளுக்கு மாற்றும்போது உங்கள் டோக்கன் எண் மாறும். பழைய இடம் மற்றொரு நோயாளிக்கு விடுவிக்கப்படும்.'
+    },
+    'rescheduledTo': {
+      'en': 'Moved to {date}. Your new token is {token}.',
+      'si': '{date} වෙත මාරු කරන ලදී. ඔබගේ නව අංකය {token}.',
+      'ta': '{date} க்கு மாற்றப்பட்டது. உங்கள் புதிய டோக்கன் {token}.'
+    },
+    'noOtherDays': {
+      'en': 'No other days are open for {clinic}. You can choose a different clinic below.',
+      'si': '{clinic} සඳහා වෙනත් දින විවෘත නැත. පහතින් වෙනත් සායනයක් තෝරාගත හැක.',
+      'ta': '{clinic} க்கு வேறு நாட்கள் இல்லை. கீழே வேறு சிகிச்சைப் பிரிவைத் தேர்ந்தெடுக்கலாம்.'
+    },
     'cancelReason': {'en': 'Why are you cancelling?', 'si': 'අවලංගු කිරීමට හේතුව?', 'ta': 'ஏன் ரத்து செய்கிறீர்கள்?'},
     'cancelConsequence': {
       'en': 'Your place will be released so another patient can use it. This cannot be undone.',
@@ -381,6 +403,21 @@ class S {
       'en': 'No visits yet. After your first clinic visit it will appear here.',
       'si': 'තවම පැමිණීම් නැත. පළමු සායන පැමිණීමෙන් පසු මෙහි පෙනේ.',
       'ta': 'இன்னும் வருகைகள் இல்லை. முதல் வருகைக்குப் பிறகு இங்கே தெரியும்.'
+    },
+    'viewAllVisits': {
+      'en': 'View all visits',
+      'si': 'සියලු පැමිණීම් බලන්න',
+      'ta': 'அனைத்து வருகைகளையும் பார்க்க'
+    },
+    'searchVisits': {
+      'en': 'Search by clinic, doctor or diagnosis',
+      'si': 'සායනය, වෛද්‍යවරයා හෝ රෝග විනිශ්චය අනුව සොයන්න',
+      'ta': 'பிரிவு, மருத்துவர் அல்லது நோய் கண்டறிதல் மூலம் தேடுக'
+    },
+    'noMatchingVisits': {
+      'en': 'No visits match your search.',
+      'si': 'ඔබගේ සෙවුමට ගැළපෙන පැමිණීම් නැත.',
+      'ta': 'உங்கள் தேடலுக்கு பொருந்தும் வருகைகள் இல்லை.'
     },
     'totalVisits': {'en': 'Total visits', 'si': 'මුළු පැමිණීම්', 'ta': 'மொத்த வருகைகள்'},
     'lastVisit': {'en': 'Last visit', 'si': 'අවසන් පැමිණීම', 'ta': 'கடைசி வருகை'},
