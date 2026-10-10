@@ -31,3 +31,6 @@ ios/Flutter/App.framework
 # OS
 .DS_Store
 Thumbs.db
+
+# Kotlin compiler session files
+android/.kotlin/

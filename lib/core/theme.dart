@@ -14,6 +14,7 @@ class AppColors {
   static const n400 = Color(0xFF9CA3AF);
   static const n200 = Color(0xFFE5E7EB);
   static const n50 = Color(0xFFF9FAFB);
+  static const disabled = Color(0xFF9FBFB2);
 }
 
 /// Spacing grid (8 px), corner radius (12 px) and minimum touch target
@@ -41,7 +42,7 @@ class AppTheme {
         error: AppColors.danger,
         surface: surface,
       ),
-      scaffoldBackgroundColor: surface,
+      scaffoldBackgroundColor: Colors.transparent,
     );
 
     // Noto Sans renders Latin; Sinhala/Tamil glyphs fall back to the Noto

@@ -66,6 +66,7 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
   Widget _body(AppSettings s) {
     return StreamView<Appointment?>(
       stream: _apptStream,
+      loadingMessage: s.t('updating'),
       builder: (context, a) {
         if (a == null) return _scaffold(s, EmptyView(icon: Icons.search_off, message: s.t('somethingWrong')));
         // Re-subscribe to the session only if the appointment moved
@@ -76,6 +77,7 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
         }
         return StreamView<ClinicSession?>(
           stream: _sessionStream!,
+          loadingMessage: s.t('updating'),
           builder: (context, session) {
             if (session == null) {
               return _scaffold(s, EmptyView(icon: Icons.event_busy, message: s.t('somethingWrong')));

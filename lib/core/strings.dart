@@ -61,6 +61,13 @@ class S {
     },
     'done': {'en': 'Done', 'si': 'අවසන්', 'ta': 'முடிந்தது'},
     'upcoming': {'en': 'Upcoming', 'si': 'ඉදිරි', 'ta': 'வரவிருப்பவை'},
+    'noApptsTitle': {'en': 'No appointments yet', 'si': 'තවම වේලාවන් නොමැත', 'ta': 'இன்னும் சந்திப்புகள் இல்லை'},
+    'noApptsBody': {
+      'en': 'Book a clinic visit and it will show up here with its live queue.',
+      'si': 'සායන වේලාවක් වෙන් කරන්න. එය සජීවී පෝලිම සමඟ මෙහි පෙන්වයි.',
+      'ta': 'சிகிச்சை நேரத்தைப் பதிவு செய்தால், நேரலை வரிசையுடன் இங்கே தோன்றும்.'
+    },
+    'updating': {'en': 'Updating...', 'si': 'යාවත්කාලීන වෙමින්...', 'ta': 'புதுப்பிக்கிறது...'},
     'noPast': {'en': 'No past appointments.', 'si': 'පසුගිය වේලාවන් නොමැත.', 'ta': 'கடந்த சந்திப்புகள் இல்லை.'},
     'past': {'en': 'Past', 'si': 'පසුගිය', 'ta': 'கடந்தவை'},
     'reschedule': {'en': 'Reschedule', 'si': 'දිනය වෙනස් කරන්න', 'ta': 'மாற்றியமைக்கவும்'},

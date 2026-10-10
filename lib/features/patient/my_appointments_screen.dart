@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../app.dart';
 import '../../core/app_settings.dart';
 import '../../core/logic.dart';
+import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../models/appointment.dart';
 import '../../services/booking_service.dart';
@@ -177,8 +178,7 @@ class _UpcomingList extends StatelessWidget {
     final s = context.watch<AppSettings>();
     if (total == 0) {
       // Empty state from M02: a clear next action, not a blank screen.
-      // The floating "Book appointment" button is the single call to action.
-      return EmptyView(icon: Icons.event_available, message: s.t('noUpcoming'));
+      return const _NoAppointments();
     }
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
@@ -245,6 +245,34 @@ class _UpcomingList extends StatelessWidget {
           ]),
         ],
       ]),
+    );
+  }
+}
+
+class _NoAppointments extends StatelessWidget {
+  const _NoAppointments();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.watch<AppSettings>();
+    final t = Theme.of(context).textTheme;
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.event_available, size: 64, color: AppColors.n400),
+          const SizedBox(height: 16),
+          Text(s.t('noApptsTitle'), textAlign: TextAlign.center, style: t.titleLarge),
+          const SizedBox(height: 8),
+          Text(s.t('noApptsBody'), textAlign: TextAlign.center, style: t.bodyMedium?.copyWith(color: AppColors.n600)),
+          const SizedBox(height: 24),
+          PrimaryButton(
+            s.t('bookAppointment'),
+            icon: Icons.add,
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BookHospitalScreen())),
+          ),
+        ]),
+      ),
     );
   }
 }
