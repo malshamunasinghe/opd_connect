@@ -151,7 +151,7 @@ class _BodyState extends State<_Body> {
                 ),
               ],
               const SizedBox(height: 8),
-              for (final v in shown) _VisitCard(visit: v),
+              for (final v in shown) _VisitCard(patientId: r.id, visit: v),
             ]);
           },
         ),
@@ -177,8 +177,25 @@ class _Fact extends StatelessWidget {
 }
 
 class _VisitCard extends StatelessWidget {
+  final String patientId;
   final Visit visit;
-  const _VisitCard({required this.visit});
+  const _VisitCard({required this.patientId, required this.visit});
+
+  Future<void> _deleteVisit(BuildContext context) async {
+    final ok = await confirm(
+      context,
+      title: 'Delete visit history?',
+      message: 'Delete the visit from ${formatDay(visit.date)}? This cannot be undone.',
+      confirmLabel: 'Delete visit',
+      danger: true,
+    );
+    if (!context.mounted || !ok) return;
+    await runGuarded(
+      context,
+      () => PatientService.deleteVisit(patientId, visit.id),
+      success: 'Visit history deleted',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -202,6 +219,15 @@ class _VisitCard extends StatelessWidget {
           if (v.tokenLabel.isNotEmpty) InfoRow('Token', v.tokenLabel, icon: Icons.confirmation_number_outlined),
           InfoRow(s.t('diagnosis'), v.diagnosis.isEmpty ? s.t('notRecorded') : v.diagnosis, icon: Icons.assignment_outlined),
           if (v.notes.isNotEmpty) InfoRow(s.t('notes'), v.notes, icon: Icons.notes),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => _deleteVisit(context),
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Delete visit history'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            ),
+          ),
         ],
       ),
     );

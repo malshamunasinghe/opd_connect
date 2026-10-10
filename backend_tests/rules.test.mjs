@@ -203,6 +203,12 @@ describe('staff operations (S08-S12, S18-S21)', () => {
     await assertFails(getDoc(doc(as('pat2'), 'patients/p1/visits/v1')));
     await assertFails(setDoc(doc(as('pat1'), 'patients/p1/visits/v2'), { diagnosis: 'self-diagnosed' }));
   });
+
+  it('patients can delete only visit history linked to their own patient record', async () => {
+    await assertSucceeds(setDoc(doc(as('staff1'), 'patients/p1/visits/v1'), { department: 'General OPD' }));
+    await assertFails(deleteDoc(doc(as('pat2'), 'patients/p1/visits/v1')));
+    await assertSucceeds(deleteDoc(doc(as('pat1'), 'patients/p1/visits/v1')));
+  });
 });
 
 describe('feedback (S07)', () => {
