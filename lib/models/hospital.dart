@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+
 class Hospital {
   final String id;
   final String name;
@@ -18,6 +19,7 @@ class Hospital {
   factory Hospital.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? {};
     return Hospital(
+      
       id: doc.id,
       name: d['name'] ?? '',
       district: d['district'] ?? '',
