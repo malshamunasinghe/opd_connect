@@ -12,9 +12,10 @@ import '../../services/patient_service.dart';
 
 /// Patient-facing "Visit history": every consultation recorded in the
 /// patient's own centralised record (F3), newest first, with a search box
-/// and a clinic filter. Read-only: visits are written by staff when a
-/// consultation is completed (S11) or entered on the patient's record (S14).
-/// Security rules let a patient read only their own visits (NF1).
+/// and a clinic filter. Visits are written by staff when a consultation is
+/// completed (S11) or entered on the patient's record (S14); the patient can
+/// delete entries from their own history. Security rules let a patient read
+/// and delete only their own visits (NF1).
 class VisitHistoryScreen extends StatefulWidget {
   const VisitHistoryScreen({super.key});
 
@@ -130,7 +131,8 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
                         child: EmptyView(icon: Icons.search_off, message: s.t('noMatchingVisits')),
                       )
                     else
-                      for (final v in shown) VisitCard(visit: v),
+                      for (final v in shown)
+                        VisitCard(visit: v, onDelete: () => deleteVisitWithConfirm(context, _patientId!, v)),
                   ],
                 );
               },
@@ -142,7 +144,10 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
 /// One expandable visit: clinic and date on top, details when opened.
 class VisitCard extends StatelessWidget {
   final Visit visit;
-  const VisitCard({super.key, required this.visit});
+
+  /// Shows a Delete button when set (patients can delete their own visits).
+  final VoidCallback? onDelete;
+  const VisitCard({super.key, required this.visit, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -169,8 +174,34 @@ class VisitCard extends StatelessWidget {
           InfoRow(s.t('diagnosis'), v.diagnosis.isEmpty ? s.t('notRecorded') : v.diagnosis,
               icon: Icons.assignment_outlined),
           if (v.notes.isNotEmpty) InfoRow(s.t('notes'), v.notes, icon: Icons.notes),
+          if (onDelete != null)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+                icon: const Icon(Icons.delete_outline),
+                label: Text(s.t('deleteVisit')),
+                onPressed: onDelete,
+              ),
+            ),
         ],
       ),
     );
+  }
+}
+
+/// Asks first, then permanently deletes [v] from the patient's own history.
+Future<void> deleteVisitWithConfirm(BuildContext context, String patientId, Visit v) async {
+  final s = context.read<AppSettings>();
+  final ok = await confirm(
+    context,
+    title: s.t('deleteVisit'),
+    message: '${formatDay(v.date)} · ${v.department}\n\n${s.t('deleteVisitConfirm')}',
+    confirmLabel: s.t('deleteVisit'),
+    cancelLabel: s.t('back'),
+    danger: true,
+  );
+  if (ok && context.mounted) {
+    await runGuarded(context, () => PatientService.deleteVisit(patientId, v.id), success: s.t('visitDeleted'));
   }
 }
