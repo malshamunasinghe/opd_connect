@@ -10,6 +10,7 @@ import '../../core/widgets.dart';
 import '../../models/patient.dart';
 import '../../models/user_profile.dart';
 import '../../services/profile_service.dart';
+import '../records/my_health_screen.dart';
 import 'change_password_screen.dart';
 import 'edit_profile_screen.dart';
 import 'help_screen.dart';
@@ -76,6 +77,16 @@ class _Body extends StatelessWidget {
             SecondaryButton(s.t('editProfile'), icon: Icons.edit_outlined, onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => EditProfileScreen(record: r)));
             }),
+            if (r != null && !profile.isStaff) ...[
+              const SizedBox(height: 12),
+              Card(
+                child: MenuTile(
+                  icon: Icons.history,
+                  title: s.t('visitHistory'),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyHealthScreen())),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             SectionTitle(s.t('contact')),
             Card(
