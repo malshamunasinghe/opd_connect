@@ -8,6 +8,8 @@ import 'db.dart';
 /// Patient records and access control module S13-S17 (F3, NF1).
 /// Owner: Weerasinghe W.D.S.U (IT23685802)
 class PatientService {
+  static bool canDeletePatient(UserProfile? profile) => profile?.isAdmin ?? false;
+
   /// READ - all patient records (staff). Sorted and filtered on the client.
   static Stream<List<Patient>> allPatients() => Db.patients.snapshots().map((q) => q.docs.map(Patient.fromDoc).toList()
     ..sort((a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase())));
@@ -79,12 +81,17 @@ class PatientService {
   /// DELETE - remove a visit entered by mistake.
   static Future<void> deleteVisit(String patientId, String visitId) => Db.visits(patientId).doc(visitId).delete();
 
-  /// DELETE - permanently remove a patient record. Admin-only action.
+  /// DELETE - permanently remove a patient record and related sub-records.
   static Future<void> deletePatient(String patientId) async {
     final batch = Db.fs.batch();
 
     final visits = await Db.visits(patientId).get();
     for (final doc in visits.docs) {
+      batch.delete(doc.reference);
+    }
+
+    final appointments = await Db.appointments.where('patientId', isEqualTo: patientId).get();
+    for (final doc in appointments.docs) {
       batch.delete(doc.reference);
     }
 
