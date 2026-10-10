@@ -97,6 +97,12 @@ service cloud.firestore {
         && request.resource.data.patientUid == uid()
         && request.resource.data.status in ['waiting', 'cancelled']
         && !changed().hasAny(['priority', 'priorityReason', 'channel', 'patientId']));
+      // Soft delete: a patient may hide their own appointment from their
+      // history at any status, but that write can change nothing else.
+      allow update: if signedIn()
+        && resource.data.patientUid == uid()
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['hiddenForPatient', 'hiddenAt']);
       allow delete: if isStaff() || (signedIn()
         && resource.data.patientUid == uid()
         && resource.data.status in ['cancelled', 'completed', 'noShow']);
