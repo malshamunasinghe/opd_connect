@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/logic.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
+import '../../models/appointment.dart';
 import '../../models/patient.dart';
 import '../../services/patient_service.dart';
 import 'archive_patient_screen.dart';
@@ -27,6 +28,7 @@ class PatientProfileScreen extends StatefulWidget {
 class _PatientProfileScreenState extends State<PatientProfileScreen> {
   late final _patientStream = PatientService.patient(widget.patientId);
   late final _visitStream = PatientService.visits(widget.patientId);
+  late final _appointmentStream = PatientService.bookedAppointments(widget.patientId);
 
   Future<void> _visitDialog({Visit? existing}) async {
     final res = await showDialog<Map<String, dynamic>>(
@@ -138,6 +140,34 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              const SectionTitle('Booked hospitals'),
+              StreamView<List<Appointment>>(
+                stream: _appointmentStream,
+                builder: (context, appointments) {
+                  final hospitals = HistoryLogic.hospitalNamesInOrder(
+                    appointments.map((a) => a.hospitalName),
+                  );
+                  if (hospitals.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('No booked appointments yet.'),
+                    );
+                  }
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final hospital in hospitals)
+                        Chip(
+                          avatar: const Icon(Icons.local_hospital_outlined, size: 18),
+                          label: Text(hospital),
+                          backgroundColor: AppColors.n50,
+                        ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
               const SectionTitle('Visit history'),
               StreamView<List<Visit>>(
                 stream: _visitStream,
@@ -156,7 +186,11 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                           child: ListTile(
                             isThreeLine: true,
                             leading: const Icon(Icons.medical_information_outlined, color: AppColors.primary),
-                            title: Text('${formatDay(v.date)} · ${v.department}'),
+                            title: Text([
+                              formatDay(v.date),
+                              if (v.department.isNotEmpty) v.department,
+                              if (v.hospitalName.isNotEmpty) v.hospitalName,
+                            ].join(' · ')),
                             subtitle: Text([
                               '${v.doctorName}${v.tokenLabel.isNotEmpty ? ' · ${v.tokenLabel}' : ''}',
                               if (v.diagnosis.isNotEmpty) 'Diagnosis: ${v.diagnosis}',
@@ -211,6 +245,7 @@ class _VisitDialog extends StatefulWidget {
 class _VisitDialogState extends State<_VisitDialog> {
   final _formKey = GlobalKey<FormState>();
   late final _dept = TextEditingController(text: widget.existing?.department ?? 'General OPD');
+  late final _hospital = TextEditingController(text: widget.existing?.hospitalName ?? '');
   late final _doctor = TextEditingController(text: widget.existing?.doctorName ?? '');
   late final _diagnosis = TextEditingController(text: widget.existing?.diagnosis ?? '');
   late final _notes = TextEditingController(text: widget.existing?.notes ?? '');
@@ -218,7 +253,7 @@ class _VisitDialogState extends State<_VisitDialog> {
 
   @override
   void dispose() {
-    for (final c in [_dept, _doctor, _diagnosis, _notes]) {
+    for (final c in [_dept, _hospital, _doctor, _diagnosis, _notes]) {
       c.dispose();
     }
     super.dispose();
@@ -258,6 +293,12 @@ class _VisitDialogState extends State<_VisitDialog> {
             ),
             const SizedBox(height: 12),
             TextFormField(
+              controller: _hospital,
+              decoration: const InputDecoration(labelText: 'Hospital (optional)'),
+              validator: (v) => (v ?? '').trim().isEmpty ? null : Validators.text(v, field: 'Hospital', max: 80),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
               controller: _doctor,
               decoration: const InputDecoration(labelText: 'Doctor (optional)'),
               validator: (v) => (v ?? '').trim().isEmpty ? null : Validators.personName(v, 'Doctor name'),
@@ -292,8 +333,8 @@ class _VisitDialogState extends State<_VisitDialog> {
             Navigator.pop(context, <String, dynamic>{
               if (!editing) 'date': Timestamp.fromDate(_date),
               if (!editing) 'department': _dept.text.trim(),
-              if (!editing) 'hospitalName': '',
               if (!editing) 'tokenLabel': '',
+              'hospitalName': _hospital.text.trim(),
               'doctorName': _doctor.text.trim(),
               'diagnosis': _diagnosis.text.trim(),
               'notes': _notes.text.trim(),
