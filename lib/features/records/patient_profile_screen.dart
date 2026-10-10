@@ -109,14 +109,16 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   final ok = await confirm(
                     context,
                     title: 'Delete patient?',
-                    message: 'This will permanently remove ${p.fullName} from the patient records. This action cannot be undone.',
+                    message: 'This permanently deletes ${p.fullName} from the database: the record, visit history, '
+                        'bookings, notifications and app profile. Audit entries are kept. This cannot be undone.',
                     confirmLabel: 'Delete patient',
                     danger: true,
                   );
                   if (!ok || !mounted) return;
+                  final admin = me(context);
                   final deleted = await runGuarded(
                     context,
-                    () => PatientService.deletePatient(p.id),
+                    () => PatientService.deletePatient(p, admin),
                     success: 'Patient deleted',
                   );
                   if (deleted && mounted) Navigator.pop(context);

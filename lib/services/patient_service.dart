@@ -79,22 +79,97 @@ class PatientService {
   /// DELETE - remove a visit entered by mistake.
   static Future<void> deleteVisit(String patientId, String visitId) => Db.visits(patientId).doc(visitId).delete();
 
-  /// DELETE - permanently remove a patient record. Admin-only action.
-  static Future<void> deletePatient(String patientId) async {
-    final batch = Db.fs.batch();
+  /// DELETE - permanently removes a patient and everything stored about them.
+  /// Admin-only (enforced here and by the Firestore rules).
+  ///
+  /// Deleted: the patient record and its visits, the patient's bookings
+  /// (places they still hold in a queue are released first), notifications,
+  /// feedback and the app profile `users/{uid}` (so the account has no role
+  /// and can no longer use the app). Kept on purpose: earlier audit entries,
+  /// plus one new "delete" entry saying who removed whom.
+  ///
+  /// The Firebase Authentication sign-in itself cannot be removed from inside
+  /// the app (that needs a server); delete it under Firebase console ->
+  /// Authentication -> Users if the person must not even be able to sign in.
+  ///
+  /// Dependent data goes first and the patient record last, so if something
+  /// fails half-way the record is still listed and the delete can be retried.
+  static Future<int> deletePatient(Patient p, UserProfile admin) async {
+    if (!admin.isAdmin) {
+      throw const AppException('forbidden', 'Only an admin can delete a patient.');
+    }
+    final uid = p.linkedUid;
+    final ops = <void Function(WriteBatch)>[];
 
-    final visits = await Db.visits(patientId).get();
-    for (final doc in visits.docs) {
-      batch.delete(doc.reference);
+    // Visit history (sub-collection).
+    for (final d in (await Db.visits(p.id).get()).docs) {
+      ops.add((b) => b.delete(d.reference));
     }
 
-    final audit = await Db.auditLogs.where('patientId', isEqualTo: patientId).get();
-    for (final doc in audit.docs) {
-      batch.delete(doc.reference);
+    // Bookings, found by record id and by the patient's login.
+    final appts = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+    for (final d in (await Db.appointments.where('patientId', isEqualTo: p.id).get()).docs) {
+      appts[d.id] = d;
+    }
+    if (uid != null) {
+      for (final d in (await Db.appointments.where('patientUid', isEqualTo: uid).get()).docs) {
+        appts[d.id] = d;
+      }
     }
 
-    batch.delete(Db.patients.doc(patientId));
-    await batch.commit();
+    // Release the queue place of every booking that is still active.
+    final activeBySession = <String, List<String>>{};
+    for (final d in appts.values) {
+      final a = Appointment.fromDoc(d);
+      if (a.isActive && a.sessionId.isNotEmpty) {
+        activeBySession.putIfAbsent(a.sessionId, () => []).add(a.id);
+      }
+    }
+    for (final e in activeBySession.entries) {
+      final ref = Db.sessions.doc(e.key);
+      final snap = await ref.get();
+      if (!snap.exists) continue;
+      final serving = snap.data()?['currentServingId'];
+      ops.add((b) => b.update(ref, {
+            'waitingIds': FieldValue.arrayRemove(e.value),
+            'bookedCount': FieldValue.increment(-e.value.length),
+            if (e.value.contains(serving)) ...{'currentServingId': null, 'currentTokenLabel': null},
+          }));
+    }
+    for (final d in appts.values) {
+      ops.add((b) => b.delete(d.reference));
+    }
+
+    if (uid != null) {
+      for (final d in (await Db.notifications.where('uid', isEqualTo: uid).get()).docs) {
+        ops.add((b) => b.delete(d.reference));
+      }
+      for (final d in (await Db.fs.collection('feedback').where('patientUid', isEqualTo: uid).get()).docs) {
+        ops.add((b) => b.delete(d.reference));
+      }
+    }
+
+    // Last: the audit entry, the login profile and the patient record.
+    final removedCount = appts.length;
+    ops.add((b) => b.set(
+        Db.auditLogs.doc(),
+        _audit(p.id, 'delete',
+            'Permanently deleted ${p.fullName} (NIC ${p.nic}) with $removedCount booking(s)', admin)));
+    if (uid != null && uid != admin.uid) {
+      ops.add((b) => b.delete(Db.users.doc(uid)));
+    }
+    ops.add((b) => b.delete(Db.patients.doc(p.id)));
+
+    // A batch holds at most 500 writes; stay well under it.
+    const chunk = 400;
+    for (var i = 0; i < ops.length; i += chunk) {
+      final batch = Db.fs.batch();
+      for (final op in ops.skip(i).take(chunk)) {
+        op(batch);
+      }
+      await batch.commit();
+    }
+    return removedCount;
   }
 
   // ---------------------------------------------------------------- S15

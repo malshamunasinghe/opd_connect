@@ -13,6 +13,7 @@ service cloud.firestore {
       return signedIn() && exists(userPath()) ? get(userPath()).data.role : 'none';
     }
     function isStaff() { return role() in ['staff', 'admin']; }
+    function isAdmin() { return role() == 'admin'; }
     function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
     function accessCodes() { return get(/databases/$(database)/documents/config/access).data; }
 
@@ -39,7 +40,9 @@ service cloud.firestore {
       // Users may change their own settings but never their role.
       allow update: if signedIn() && uid() == userId
         && !changed().hasAny(['role', 'accessCode', 'email']);
-      allow delete: if false;
+      // Only an admin, and never their own profile (used when a patient is
+      // permanently deleted from the Patient records).
+      allow delete: if isAdmin() && userId != uid();
     }
 
     match /hospitals/{id} {
@@ -122,8 +125,9 @@ service cloud.firestore {
         && !changed().hasAny(['nic', 'linkedUid', 'archived', 'archiveNote', 'createdBy'])
         && validName(request.resource.data.fullName)
         && validPhone(request.resource.data.phone));
-      // Records are archived, never deleted (S16).
-      allow delete: if false;
+      // Records are normally archived (S16); only an admin can permanently
+      // delete one.
+      allow delete: if isAdmin();
 
       match /visits/{vid} {
         allow read: if isStaff() || (signedIn()
@@ -137,7 +141,8 @@ service cloud.firestore {
     }
 
     match /notifications/{nid} {
-      allow read, delete: if signedIn() && resource.data.uid == uid();
+      // The owner, or an admin cleaning up a permanently deleted patient.
+      allow read, delete: if isAdmin() || (signedIn() && resource.data.uid == uid());
       allow update: if signedIn() && resource.data.uid == uid() && changed().hasOnly(['read']);
       allow create: if isStaff() || (signedIn() && request.resource.data.uid == uid());
     }
@@ -152,7 +157,8 @@ service cloud.firestore {
         && request.resource.data.comment.size() <= 300
         && get(/databases/$(database)/documents/appointments/$(fid)).data.patientUid == uid()
         && get(/databases/$(database)/documents/appointments/$(fid)).data.status == 'completed';
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     // Append-only audit trail.

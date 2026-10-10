@@ -152,6 +152,15 @@ class _Splash extends StatelessWidget {
             if (showSignOut) ...[
               const SizedBox(height: 16),
               const Text('Setting up your account…'),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(32, 8, 32, 0),
+                child: Text(
+                  'If this takes more than a few seconds, your profile may have been removed by the hospital. '
+                  'Please contact the ICT unit.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13),
+                ),
+              ),
               TextButton(onPressed: AuthService.signOut, child: const Text('Sign out')),
             ],
           ]),
