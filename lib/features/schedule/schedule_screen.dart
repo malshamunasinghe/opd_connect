@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
+import '../../app.dart';
 import '../../core/logic.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
@@ -13,6 +15,8 @@ import 'edit_session_screen.dart';
 /// S19 is notification_centre_screen.dart.
 /// Owner: Nethmini K (IT23669130)
 /// CRUD: READ sessions for the week (live). Tapping a session opens S20.
+/// Admins also get an Edit / Delete menu on every session; Delete removes the
+/// clinic and its bookings from the database.
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
 
@@ -108,6 +112,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final key = DateKeys.of(day);
     final items = all.where((x) => x.dateKey == key).toList();
     final isToday = key == DateKeys.of(DateTime.now());
+    final admin = context.watch<CurrentUser>().profile?.isAdmin ?? false;
     return [
       Padding(
         padding: const EdgeInsets.only(top: 12, bottom: 6),
@@ -148,10 +153,27 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         fontWeight: FontWeight.w600, decoration: x.isActive ? null : TextDecoration.lineThrough)),
                 subtitle: Text('${x.doctorName} · ${x.hospitalName}'
                     '${x.isActive ? '' : '\nCancelled: ${x.cancelReason ?? ''}'}'),
-                trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text('${x.bookedCount}/${x.capacity}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  Icon(x.remindersEnabled ? Icons.notifications_active : Icons.notifications_off,
-                      size: 16, color: AppColors.n600),
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Text('${x.bookedCount}/${x.capacity}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Icon(x.remindersEnabled ? Icons.notifications_active : Icons.notifications_off,
+                        size: 16, color: AppColors.n600),
+                  ]),
+                  if (admin)
+                    PopupMenuButton<String>(
+                      tooltip: 'Clinic actions',
+                      onSelected: (v) {
+                        if (v == 'edit') {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => EditSessionScreen(session: x)));
+                        } else {
+                          deleteClinicWithConfirm(context, x);
+                        }
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'edit', child: Text('Edit clinic')),
+                        PopupMenuItem(value: 'delete', child: Text('Delete clinic')),
+                      ],
+                    ),
                 ]),
               ),
             ),

@@ -4,6 +4,7 @@ import '../core/logic.dart';
 import '../models/app_notification.dart';
 import '../models/appointment.dart';
 import '../models/clinic_session.dart';
+import '../models/user_profile.dart';
 import 'db.dart';
 
 /// Clinic schedule, notifications and accessibility module S18-S22
@@ -188,6 +189,54 @@ class ScheduleService {
           'has-bookings', 'This session has bookings. Cancel it instead so patients are notified.');
     }
     await Db.sessions.doc(s.id).delete();
+  }
+
+  /// DELETE - admin only. Permanently removes a clinic session from the
+  /// database together with every booking made for it. Patients who still
+  /// had an active booking and use the app are notified first. Returns how
+  /// many bookings were removed and how many patients were notified.
+  ///
+  /// The booking documents and notifications go first and the session last,
+  /// so a failure part-way leaves the session visible and the delete can be
+  /// retried. Patients' medical visit history is not touched.
+  static Future<({int bookings, int notified})> deleteSessionPermanently(
+      ClinicSession s, UserProfile admin) async {
+    if (!admin.isAdmin) {
+      throw const AppException('forbidden', 'Only an admin can permanently delete a clinic.');
+    }
+    final appts = (await Db.appointments.where('sessionId', isEqualTo: s.id).get()).docs.map(Appointment.fromDoc).toList();
+    final ops = <void Function(WriteBatch)>[];
+
+    var notified = 0;
+    for (final a in appts) {
+      if (a.isActive && a.patientUid != null) {
+        ops.add((b) => b.set(
+            Db.notifications.doc(),
+            AppNotification.data(
+              uid: a.patientUid!,
+              title: 'Clinic removed - ${a.tokenLabel}',
+              body: '${s.department} at ${s.hospitalName} on ${s.dateKey} was removed by the hospital. '
+                  'Please book another day.',
+              type: NotificationTypes.sessionCancelled,
+            )));
+        notified++;
+      }
+    }
+    for (final a in appts) {
+      ops.add((b) => b.delete(Db.appointments.doc(a.id)));
+    }
+    ops.add((b) => b.delete(Db.sessions.doc(s.id)));
+
+    // A batch holds at most 500 writes; stay well under it.
+    const chunk = 400;
+    for (var i = 0; i < ops.length; i += chunk) {
+      final batch = Db.fs.batch();
+      for (final op in ops.skip(i).take(chunk)) {
+        op(batch);
+      }
+      await batch.commit();
+    }
+    return (bookings: appts.length, notified: notified);
   }
 
   static Future<List<Appointment>> _activeAppointments(String sessionId) async {

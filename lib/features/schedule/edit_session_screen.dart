@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../app.dart';
 import '../../core/logic.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
@@ -15,7 +17,8 @@ import 'session_form.dart';
 /// automatically - nobody has to phone them (Staff Q4 "time management").
 /// Owner: Nethmini K (IT23669130)
 /// CRUD: READ session; UPDATE session + booked appointments;
-///       CREATE change notifications; DELETE session (only if never booked).
+///       CREATE change notifications; DELETE session (staff: only if never
+///       booked; admin: always, together with its bookings).
 class EditSessionScreen extends StatefulWidget {
   final ClinicSession session;
   const EditSessionScreen({super.key, required this.session});
@@ -96,11 +99,20 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
   @override
   Widget build(BuildContext context) {
     final s = widget.session;
+    final admin = context.watch<CurrentUser>().profile?.isAdmin ?? false;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit session'),
         actions: [
-          if (s.bookedCount == 0 && s.lastToken == 0)
+          if (admin)
+            IconButton(
+              tooltip: 'Delete clinic permanently',
+              icon: const Icon(Icons.delete_forever_outlined),
+              onPressed: () async {
+                if (await deleteClinicWithConfirm(context, s) && context.mounted) Navigator.pop(context);
+              },
+            )
+          else if (s.bookedCount == 0 && s.lastToken == 0)
             IconButton(tooltip: 'Delete session', icon: const Icon(Icons.delete_outline), onPressed: _delete),
         ],
       ),
@@ -131,5 +143,31 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
           ),
       ]),
     );
+  }
+}
+
+/// Admin only: asks first, then permanently deletes [s] and all of its bookings
+/// from the database. Returns true when the clinic was deleted.
+Future<bool> deleteClinicWithConfirm(BuildContext context, ClinicSession s) async {
+  final admin = me(context);
+  final ok = await confirm(
+    context,
+    title: 'Delete this clinic?',
+    message: 'This permanently deletes ${s.department} on ${formatDay(s.date)} (${s.startTime}-${s.endTime}) at '
+        '${s.hospitalName} from the database, together with all of its bookings. Patients with an active '
+        'booking are notified. This cannot be undone.',
+    confirmLabel: 'Delete clinic',
+    danger: true,
+  );
+  if (!ok || !context.mounted) return false;
+  try {
+    final r = await ScheduleService.deleteSessionPermanently(s, admin);
+    if (context.mounted) {
+      showSnack(context, 'Clinic deleted - ${r.bookings} booking(s) removed, ${r.notified} patient(s) notified');
+    }
+    return true;
+  } catch (e) {
+    if (context.mounted) showSnack(context, friendlyError(e), error: true);
+    return false;
   }
 }
